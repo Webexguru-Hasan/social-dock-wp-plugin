@@ -34,6 +34,49 @@ if ( ! defined( 'WPSD_URL' ) ) {
     define( 'WPSD_URL', plugin_dir_url( __FILE__ ) );
 }
 
+//--------------------------
+//Plugin Activation
+//--------------------------
+function wpsd_activate_plugin() {
+    // Run database installation
+    require_once WPSD_PATH . 'admin/db/install.php';
+    wpsd_install_db();
+}
+
+register_activation_hook( __FILE__, 'wpsd_activate_plugin' );
+
+// ----------------------------
+// PLUGIN DEACTIVATION
+// ----------------------------
+function wpsd_deactivate_plugin() {
+    // Don’t delete tables on deactivate, just clean up options/transients if needed
+    // Example:
+    // delete_option( 'wpsd_some_option' );
+}
+register_deactivation_hook( __FILE__, 'wpsd_deactivate_plugin' );
+
+
+// ----------------------------
+// PLUGIN UNINSTALL (delete plugin completely)
+// ----------------------------
+function wpsd_uninstall_plugin() {
+    global $wpdb;
+
+    $widget_table  = $wpdb->prefix . 'wpsd_widgets';
+    $channel_table = $wpdb->prefix . 'wpsd_channels';
+
+    // Drop custom tables
+    $wpdb->query( "DROP TABLE IF EXISTS $channel_table" );
+    $wpdb->query( "DROP TABLE IF EXISTS $widget_table" );
+}
+register_uninstall_hook( __FILE__, 'wpsd_uninstall_plugin' );
+
+
+// Include DB insert functions
+// require_once plugin_dir_path(__FILE__) . 'admin/db/insert.php';
+
+
+
 
 // Include admin files
 if ( is_admin() ) {

@@ -36,8 +36,8 @@ add_action( 'wp_ajax_wpsd_create_widget', 'wpsd_create_widget_callback' );
 
 function wpsd_create_widget_callback() {
     // Security check
-    console.log('AJAX callback triggered');
-    check_ajax_referer( 'nonce', 'security' );
+    error_log('AJAX callback triggered');
+    check_ajax_referer( 'wpsd_nonce', 'security' );
 
     $data = [
         'user_name'   => sanitize_text_field( $_POST['user_name'] ),
@@ -64,6 +64,61 @@ function wpsd_create_widget_callback() {
     }
     wp_die();
 }
+
+// 🔹 For logged-in users
+add_action( 'wp_ajax_wpsd_get_widgets', 'wpsd_get_widgets_callback' );
+ 
+// 🔹 For guests (not logged in)
+add_action( 'wp_ajax_nopriv_wpsd_get_widgets', 'wpsd_get_widgets_callback' );
+
+function wpsd_get_widgets_callback() {
+    error_log('--- [wpsd_get_widgets_callback STARTED] ---');
+
+    // ✅ Step 1: Security check
+    if ( ! isset($_POST['security']) ) {
+        error_log('[wpsd_get_widgets_callback] Security token (nonce) missing.');
+        wp_send_json_error([ 'message' => 'Security check failed: Nonce missing' ]);
+        wp_die();
+    }
+
+    error_log('[wpsd_get_widgets_callback] Security token found, verifying...');
+    $nonce_verified = check_ajax_referer( 'wpsd_nonce', 'security', false );
+
+    if ( ! $nonce_verified ) {
+        error_log('[wpsd_get_widgets_callback] Security check failed: Invalid nonce.');
+        wp_send_json_error([ 'message' => 'Security check failed: Invalid nonce' ]);
+        wp_die();
+    }
+    error_log('[wpsd_get_widgets_callback] Security check passed ✅');
+
+    // ✅ Step 2: Access database
+    global $wpdb;
+    $table = $wpdb->prefix . 'wpsd_widgets_db';
+    error_log("[wpsd_get_widgets_callback] Using table: $table");
+
+    // ✅ Step 3: Run query
+    $query = "SELECT id, widget_name, style, status, created_at FROM $table ORDER BY created_at DESC";
+    error_log("[wpsd_get_widgets_callback] SQL Query: $query");
+
+    $widgets = $wpdb->get_results( $query, ARRAY_A );
+
+    // ✅ Step 4: Check results
+    if ( ! empty( $widgets ) ) {
+        error_log('[wpsd_get_widgets_callback] Widgets fetched successfully. Count: ' . count($widgets));
+        foreach ($widgets as $w) {
+            error_log('[wpsd_get_widgets_callback] Widget => ID: ' . $w['id'] . ', Name: ' . $w['widget_name'] . ', Status: ' . $w['status']);
+        }
+        wp_send_json_success( [ 'widgets' => $widgets ] );
+    } else {
+        error_log('[wpsd_get_widgets_callback] No widgets found in database.');
+        wp_send_json_error( [ 'message' => 'No widgets found' ] );
+    }
+
+    error_log('--- [wpsd_get_widgets_callback ENDED] ---');
+    wp_die();
+}
+
+
 
 ?>
 

@@ -32,7 +32,12 @@ document.addEventListener("DOMContentLoaded", function () {
       },
       function (response) {
         widgetsList.innerHTML = "";
-        if (!response.success || !response.data || response.data.length === 0) {
+        console.log(response);
+        if (
+          !response.success ||
+          !response.data.widgets ||
+          response.data.widgets.length === 0
+        ) {
           var emptyRow = document.createElement("tr");
           emptyRow.id = "wpsd-no-widgets-row";
           emptyRow.innerHTML =
@@ -41,7 +46,7 @@ document.addEventListener("DOMContentLoaded", function () {
           return;
         }
 
-        response.data.forEach(function (widget) {
+        response.data.widgets.forEach(function (widget) {
           var tr = document.createElement("tr");
           tr.className = "wpsd-widget-row";
           tr.innerHTML = `

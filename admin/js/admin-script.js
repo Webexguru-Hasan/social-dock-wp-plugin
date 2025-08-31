@@ -116,19 +116,6 @@ document.addEventListener("DOMContentLoaded", function () {
               });
             });
 
-          // Duplicate logic
-          tooltip
-            .querySelector(".wpsd-duplicate")
-            .addEventListener("click", function (e) {
-              e.stopPropagation();
-              tooltip.classList.remove("active");
-              var newWidget = Object.assign({}, widget);
-              newWidget.name = widget.name + " Copy";
-              addWidgetToStorage(newWidget);
-              renderWidgets();
-              showToast("Widget duplicated!");
-            });
-
           // Delete logic
           // Delete logic
           tooltip
@@ -159,6 +146,67 @@ document.addEventListener("DOMContentLoaded", function () {
                 );
               });
             });
+
+          // Duplicate logic (AJAX)
+          tooltip
+            .querySelector(".wpsd-duplicate")
+            .addEventListener("click", function (e) {
+              e.stopPropagation();
+              tooltip.classList.remove("active");
+
+              console.log("[WPSD][Duplicate] Clicked", widget);
+              if (!widget || !widget.id) {
+                console.error("[WPSD][Duplicate] Missing widget id", widget);
+                showToast("❌ Can't duplicate: missing widget id.");
+                return;
+              }
+
+              console.log("[WPSD][Duplicate] Sending AJAX", {
+                url: wpsd_ajax.ajax_url,
+                action: "wpsd_duplicate_widget",
+                security: wpsd_ajax.nonce,
+                widget_id: widget.id,
+              });
+
+              jQuery
+                .post(
+                  wpsd_ajax.ajax_url,
+                  {
+                    action: "wpsd_duplicate_widget",
+                    security: wpsd_ajax.nonce,
+                    widget_id: widget.id,
+                  },
+                  function (response) {
+                    console.log(
+                      "[WPSD][Duplicate] AJAX success response:",
+                      response
+                    );
+
+                    if (response.success) {
+                      showToast(
+                        "✅ " +
+                          response.data.message +
+                          " (New ID: " +
+                          response.data.new_id +
+                          ")"
+                      );
+                      renderWidgets(); // refresh widget list
+                    } else {
+                      showToast(
+                        "❌ Failed to duplicate: " + response.data.message
+                      );
+                    }
+                  }
+                )
+                .fail(function (xhr) {
+                  console.error("[WPSD][Duplicate] AJAX error", {
+                    status: xhr.statusText,
+                    error: xhr.responseText,
+                    xhr: xhr,
+                  });
+                  showToast("❌ AJAX request failed.");
+                });
+            }); //duplicate logic end
         });
       }
     );

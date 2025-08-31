@@ -36,7 +36,8 @@ add_action( 'wp_ajax_wpsd_create_widget', 'wpsd_create_widget_callback' );
 
 function wpsd_create_widget_callback() {
     // Security check
-    check_ajax_referer( 'wpsd_nonce', 'security' );
+    console.log('AJAX callback triggered');
+    check_ajax_referer( 'nonce', 'security' );
 
     $data = [
         'user_name'   => sanitize_text_field( $_POST['user_name'] ),

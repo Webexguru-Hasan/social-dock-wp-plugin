@@ -24,6 +24,14 @@ function wpsd_admin_assets($hook) {
             WPSD_VERSION,
             true
         );
+          wp_localize_script(
+        'wpsd-admin-js',
+        'wpsd_ajax',
+        [
+            'ajax_url' => admin_url( 'admin-ajax.php' ),
+            'nonce'    => wp_create_nonce( 'wpsd_nonce' )
+        ]
+    );
     }
 }
 

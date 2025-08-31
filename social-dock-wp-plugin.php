@@ -73,7 +73,7 @@ register_uninstall_hook( __FILE__, 'wpsd_uninstall_plugin' );
 
 
 // Include DB insert functions
-// require_once plugin_dir_path(__FILE__) . 'admin/db/insert.php';
+require_once plugin_dir_path(__FILE__) . 'admin/db/insert.php';
 
 
 

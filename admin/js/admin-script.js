@@ -328,5 +328,25 @@ document.addEventListener("DOMContentLoaded", function () {
     popup.querySelector(".wpsd-popup-bg").onclick = () =>
       (popup.style.display = "none");
   }
+
+  /**
+   * Close tooltip menus when clicking outside
+   */
+
+  document.addEventListener("click", function (e) {
+    // Select all tooltip menus
+    const tooltips = document.querySelectorAll(".wpsd-tooltip-menu");
+
+    // Loop through each tooltip to check if the click was inside or outside
+    tooltips.forEach((tooltip) => {
+      // Check if the clicked element is not a tooltip or a dots button
+      if (!tooltip.contains(e.target) && !e.target.closest(".wpsd-dots")) {
+        // If the tooltip is active, remove the 'active' class
+        if (tooltip.classList.contains("active")) {
+          tooltip.classList.remove("active");
+        }
+      }
+    });
+  });
 }); // Social Dock Admin Scripts
 // Move all your <script> content here.

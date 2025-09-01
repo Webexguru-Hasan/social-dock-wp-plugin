@@ -23,193 +23,225 @@ document.addEventListener("DOMContentLoaded", function () {
   var widgetsList = document.getElementById("wpsd-widgets-list");
   var noWidgetsRow = document.getElementById("wpsd-no-widgets-row");
 
-  function renderWidgets() {
-    jQuery.post(
-      wpsd_ajax.ajax_url,
-      {
-        action: "wpsd_get_widgets", // You need to implement this PHP handler to fetch all widgets from DB
-        security: wpsd_ajax.nonce,
-      },
-      function (response) {
+  /**
+   * Asynchronously fetches widgets from the server using the native fetch API
+   * and renders them to the page. This is the vanilla JavaScript equivalent
+   * of the jQuery.post() call.
+   */
+  async function renderWidgets() {
+    console.log("Fetching widgets...");
+
+    // Construct the data to be sent, including the action and security nonce.
+    // URLSearchParams is the standard way to format data for POST requests in vanilla JS.
+    const formData = new URLSearchParams();
+    formData.append("action", "wpsd_get_widgets");
+    formData.append("security", wpsd_ajax.nonce);
+
+    try {
+      // Use the fetch API to make a POST request to the WordPress AJAX URL.
+      const response = await fetch(wpsd_ajax.ajax_url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: formData,
+      });
+
+      // Check if the response was successful.
+      if (!response.ok) {
+        throw new Error("Network response was not ok");
+      }
+
+      // Parse the JSON data from the response.
+      const result = await response.json();
+
+      const widgetsList = document.getElementById("wpsd-widgets-list");
+
+      // Clear the existing list before rendering.
+      if (widgetsList) {
         widgetsList.innerHTML = "";
-        console.log(response);
+
+        // Check if the request was successful and if there are widgets to display.
         if (
-          !response.success ||
-          !response.data.widgets ||
-          response.data.widgets.length === 0
+          result.success &&
+          result.data &&
+          result.data.widgets &&
+          result.data.widgets.length > 0
         ) {
+          // Render each widget to the list.
+          result.data.widgets.forEach(function (widget) {
+            var tr = document.createElement("tr");
+            tr.className = "wpsd-widget-row";
+            tr.innerHTML = `
+                        <td>
+                            <label class="wpsd-switch">
+                                <input type="checkbox" ${
+                                  widget.status == 1 ? "checked" : ""
+                                }>
+                                <span class="wpsd-slider"></span>
+                            </label>
+                        </td>
+                        <td class="wpsd-widget-name">${widget.widget_name}</td>
+                        <td class="wpsd-widget-date">${widget.created_at}</td>
+                        <td style="display:flex;align-items:center;gap:12px;">
+                            <button class="wpsd-widget-site">This site</button>
+                            <span class="wpsd-widget-actions" style="position:relative;">
+                                <button class="wpsd-dots" style="background:#F3F4F6;border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
+                                    <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
+                                </button>
+                                <div class="wpsd-tooltip-menu">
+                                    <button class="wpsd-edit"><span>✏️</span> Edit</button>
+                                    <button class="wpsd-duplicate"><span>📄</span> Duplicate</button>
+                                    <button class="wpsd-delete"><span>🗑️</span> Delete</button>
+                                </div>
+                            </span>
+                        </td>
+                    `;
+            widgetsList.appendChild(tr);
+
+            // Tooltip logic
+            var dots = tr.querySelector(".wpsd-dots");
+            var tooltip = tr.querySelector(".wpsd-tooltip-menu");
+            dots.addEventListener("click", function (e) {
+              e.stopPropagation();
+              document
+                .querySelectorAll(".wpsd-tooltip-menu")
+                .forEach((t) => t.classList.remove("active"));
+              tooltip.classList.toggle("active");
+            });
+
+            // Edit logic using fetch API
+            var editButton = tooltip.querySelector(".wpsd-edit");
+            editButton.addEventListener("click", function (e) {
+              e.stopPropagation();
+              tooltip.classList.remove("active");
+              showPopup("edit", widget.widget_name, async function (newName) {
+                const updateFormData = new URLSearchParams();
+                updateFormData.append("action", "wpsd_update_widget");
+                updateFormData.append("security", wpsd_ajax.nonce);
+                updateFormData.append("widget_id", widget.id);
+                updateFormData.append("widget_name", newName);
+
+                try {
+                  const updateResponse = await fetch(wpsd_ajax.ajax_url, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: updateFormData,
+                  });
+
+                  const updateResult = await updateResponse.json();
+                  if (updateResult.success) {
+                    showToast("Widget updated!");
+                    renderWidgets();
+                  } else {
+                    showToast(
+                      "❌ Failed to update: " + updateResult.data.message
+                    );
+                  }
+                } catch (error) {
+                  console.error("Failed to update widget:", error);
+                  showToast(
+                    "❌ Failed to update widget. Check console for details."
+                  );
+                }
+              });
+            });
+
+            // Duplicate logic using fetch API
+            var duplicateButton = tooltip.querySelector(".wpsd-duplicate");
+            duplicateButton.addEventListener("click", async function (e) {
+              e.stopPropagation();
+              tooltip.classList.remove("active");
+
+              const duplicateFormData = new URLSearchParams();
+              duplicateFormData.append("action", "wpsd_duplicate_widget");
+              duplicateFormData.append("security", wpsd_ajax.nonce);
+              duplicateFormData.append("widget_id", widget.id);
+
+              try {
+                const duplicateResponse = await fetch(wpsd_ajax.ajax_url, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                  },
+                  body: duplicateFormData,
+                });
+
+                const duplicateResult = await duplicateResponse.json();
+                if (duplicateResult.success) {
+                  showToast(
+                    "✅ Widget duplicated! (New ID: " +
+                      duplicateResult.data.new_id +
+                      ")"
+                  );
+                  renderWidgets();
+                } else {
+                  showToast(
+                    "❌ Failed to duplicate: " + duplicateResult.data.message
+                  );
+                }
+              } catch (error) {
+                console.error("Failed to duplicate widget:", error);
+                showToast(
+                  "❌ Failed to duplicate widget. Check console for details."
+                );
+              }
+            });
+
+            // Delete logic using fetch API
+            var deleteButton = tooltip.querySelector(".wpsd-delete");
+            deleteButton.addEventListener("click", function (e) {
+              e.stopPropagation();
+              tooltip.classList.remove("active");
+              showPopup("delete", widget.widget_name, async function () {
+                const deleteFormData = new URLSearchParams();
+                deleteFormData.append("action", "wpsd_delete_widget");
+                deleteFormData.append("security", wpsd_ajax.nonce);
+                deleteFormData.append("widget_id", widget.id);
+
+                try {
+                  const deleteResponse = await fetch(wpsd_ajax.ajax_url, {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/x-www-form-urlencoded",
+                    },
+                    body: deleteFormData,
+                  });
+
+                  const deleteResult = await deleteResponse.json();
+                  if (deleteResult.success) {
+                    showToast("Widget deleted!");
+                    renderWidgets();
+                  } else {
+                    showToast(
+                      "❌ Failed to delete: " + deleteResult.data.message
+                    );
+                  }
+                } catch (error) {
+                  console.error("Failed to delete widget:", error);
+                  showToast(
+                    "❌ Failed to delete widget. Check console for details."
+                  );
+                }
+              });
+            });
+          });
+        } else {
+          // If the request was successful but no widgets were found, display a message.
           var emptyRow = document.createElement("tr");
           emptyRow.id = "wpsd-no-widgets-row";
           emptyRow.innerHTML =
             '<td colspan="4" style="text-align:center;">No widgets found! Create a new widget.</td>';
           widgetsList.appendChild(emptyRow);
-          return;
         }
-
-        response.data.widgets.forEach(function (widget) {
-          var tr = document.createElement("tr");
-          tr.className = "wpsd-widget-row";
-          tr.innerHTML = `
-        <td>
-            <label class="wpsd-switch">
-                <input type="checkbox" ${widget.status == 1 ? "checked" : ""}>
-                <span class="wpsd-slider"></span>
-            </label>
-        </td>
-        <td class="wpsd-widget-name">${widget.widget_name}</td>
-        <td class="wpsd-widget-date">${widget.created_at}</td>
-        <td style="display:flex;align-items:center;gap:12px;">
-            <button class="wpsd-widget-site">This site</button>
-            <span class="wpsd-widget-actions" style="position:relative;">
-                <button class="wpsd-dots" style="background:#F3F4F6;border:none;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;">
-                    <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
-                </button>
-                <div class="wpsd-tooltip-menu">
-                    <button class="wpsd-edit"><span>✏️</span> Edit</button>
-                    <button class="wpsd-duplicate"><span>📄</span> Duplicate</button>
-                    <button class="wpsd-delete"><span>🗑️</span> Delete</button>
-                </div>
-            </span>
-        </td>
-    `;
-          widgetsList.appendChild(tr);
-
-          // Tooltip logic
-          var dots = tr.querySelector(".wpsd-dots");
-          var tooltip = tr.querySelector(".wpsd-tooltip-menu");
-          dots.addEventListener("click", function (e) {
-            e.stopPropagation();
-            document
-              .querySelectorAll(".wpsd-tooltip-menu")
-              .forEach((t) => t.classList.remove("active"));
-            tooltip.classList.toggle("active");
-          });
-
-          // Edit logic
-          tooltip
-            .querySelector(".wpsd-edit")
-            .addEventListener("click", function (e) {
-              e.stopPropagation();
-              tooltip.classList.remove("active");
-              // Pass the correct widget name from the database response
-              showPopup("edit", widget.widget_name, function (newName) {
-                // AJAX request to update widget name
-                jQuery.post(
-                  wpsd_ajax.ajax_url,
-                  {
-                    action: "wpsd_update_widget", // You need to create this handler in PHP
-                    security: wpsd_ajax.nonce,
-                    widget_id: widget.id,
-                    widget_name: newName,
-                  },
-                  function (response) {
-                    if (response.success) {
-                      showToast("Widget updated!");
-                      renderWidgets();
-                    } else {
-                      showToast(
-                        "❌ Failed to update: " + response.data.message
-                      );
-                    }
-                  }
-                );
-              });
-            });
-
-          // Delete logic
-          // Delete logic
-          tooltip
-            .querySelector(".wpsd-delete")
-            .addEventListener("click", function (e) {
-              e.stopPropagation();
-              tooltip.classList.remove("active");
-              // Pass the correct widget name from the database response
-              showPopup("delete", widget.widget_name, function () {
-                // AJAX request to delete widget
-                jQuery.post(
-                  wpsd_ajax.ajax_url,
-                  {
-                    action: "wpsd_delete_widget", // You need to create this handler in PHP
-                    security: wpsd_ajax.nonce,
-                    widget_id: widget.id,
-                  },
-                  function (response) {
-                    if (response.success) {
-                      showToast("Widget deleted!");
-                      renderWidgets();
-                    } else {
-                      showToast(
-                        "❌ Failed to delete: " + response.data.message
-                      );
-                    }
-                  }
-                );
-              });
-            });
-
-          // Duplicate logic (AJAX)
-          tooltip
-            .querySelector(".wpsd-duplicate")
-            .addEventListener("click", function (e) {
-              e.stopPropagation();
-              tooltip.classList.remove("active");
-
-              console.log("[WPSD][Duplicate] Clicked", widget);
-              if (!widget || !widget.id) {
-                console.error("[WPSD][Duplicate] Missing widget id", widget);
-                showToast("❌ Can't duplicate: missing widget id.");
-                return;
-              }
-
-              console.log("[WPSD][Duplicate] Sending AJAX", {
-                url: wpsd_ajax.ajax_url,
-                action: "wpsd_duplicate_widget",
-                security: wpsd_ajax.nonce,
-                widget_id: widget.id,
-              });
-
-              jQuery
-                .post(
-                  wpsd_ajax.ajax_url,
-                  {
-                    action: "wpsd_duplicate_widget",
-                    security: wpsd_ajax.nonce,
-                    widget_id: widget.id,
-                  },
-                  function (response) {
-                    console.log(
-                      "[WPSD][Duplicate] AJAX success response:",
-                      response
-                    );
-
-                    if (response.success) {
-                      showToast(
-                        "✅ " +
-                          response.data.message +
-                          " (New ID: " +
-                          response.data.new_id +
-                          ")"
-                      );
-                      renderWidgets(); // refresh widget list
-                    } else {
-                      showToast(
-                        "❌ Failed to duplicate: " + response.data.message
-                      );
-                    }
-                  }
-                )
-                .fail(function (xhr) {
-                  console.error("[WPSD][Duplicate] AJAX error", {
-                    status: xhr.statusText,
-                    error: xhr.responseText,
-                    xhr: xhr,
-                  });
-                  showToast("❌ AJAX request failed.");
-                });
-            }); //duplicate logic end
-        });
       }
-    );
+    } catch (error) {
+      console.error("Failed to fetch widgets:", error);
+      // You would call your showToast function here to notify the user.
+      // showToast("❌ Failed to fetch widgets. Check console for details.");
+    }
   }
 
   // --- CREATE WIDGET FORM SUBMIT ---

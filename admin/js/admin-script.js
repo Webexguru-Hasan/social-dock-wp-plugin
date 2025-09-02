@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", function () {
                                     <svg viewBox="0 0 24 24" width="20" height="20"><circle cx="12" cy="5" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="12" cy="19" r="2"/></svg>
                                 </button>
                                 <div class="wpsd-tooltip-menu">
-                                    <button class="wpsd-edit"><span>✏️</span> Edit</button>
+                                    <button class="wpsd-edit"><span>✏️</span>Edit</button>
                                     <button class="wpsd-duplicate"><span>📄</span> Duplicate</button>
                                     <button class="wpsd-delete"><span>🗑️</span> Delete</button>
                                 </div>
@@ -98,6 +98,36 @@ document.addEventListener("DOMContentLoaded", function () {
                         </td>
                     `;
             widgetsList.appendChild(tr);
+
+            // Add click listener to the widget name to redirect
+            var widgetNameCell = tr.querySelector(".wpsd-widget-name");
+            widgetNameCell.addEventListener("click", function () {
+              window.location.href = `admin.php?page=wpsd_all_channels&widget_id=${widget.id}`;
+            });
+
+            // Prevent propagation from children elements that should not trigger redirect
+            var switchInput = tr.querySelector(".wpsd-switch input");
+            var siteButton = tr.querySelector(".wpsd-widget-site");
+            var actionsSpan = tr.querySelector(".wpsd-widget-actions");
+            var tooltipMenu = tr.querySelector(".wpsd-tooltip-menu");
+            var tooltipButtons = tooltipMenu
+              ? tooltipMenu.querySelectorAll("button")
+              : [];
+
+            switchInput.addEventListener("click", function (e) {
+              e.stopPropagation();
+            });
+            siteButton.addEventListener("click", function (e) {
+              e.stopPropagation();
+            });
+            actionsSpan.addEventListener("click", function (e) {
+              e.stopPropagation();
+            });
+            tooltipButtons.forEach(function (btn) {
+              btn.addEventListener("click", function (e) {
+                e.stopPropagation();
+              });
+            });
 
             // Tooltip logic
             var dots = tr.querySelector(".wpsd-dots");

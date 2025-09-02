@@ -82,6 +82,7 @@ require_once plugin_dir_path(__FILE__) . 'admin/db/wpsd_crud.php';
 if ( is_admin() ) {
     require_once WPSD_PATH . 'admin/pages/dashboard.php';
     require_once WPSD_PATH . 'admin/pages/all-widgets.php';
+    require_once WPSD_PATH . 'admin/pages/all-channels.php';
     require_once WPSD_PATH . 'admin/menu.php';
 }
 

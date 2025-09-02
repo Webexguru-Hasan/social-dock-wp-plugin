@@ -20,7 +20,15 @@ function wpsd_register_admin_menu() {
         'wpsd_all_widgets',
         'wpsd_all_widgets_page'
     );
+    
+    // Register the "All Channels" submenu page
+    add_submenu_page(
+        'wpsd_dashboard', // The parent menu slug
+        __( 'All Channels', 'social-dock' ), // The page title
+        __( 'All Channels', 'social-dock' ), // The menu title
+        'manage_options', // The capability required to access this page
+        'wpsd_all_channels', // The menu slug, which the JS redirects to
+        'wpsd_all_channels_page' // The callback function that renders the page
+    );
 }
 add_action( 'admin_menu', 'wpsd_register_admin_menu' );
-
-

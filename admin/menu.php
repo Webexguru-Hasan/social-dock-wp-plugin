@@ -23,7 +23,7 @@ function wpsd_register_admin_menu() {
     
     // Register the "All Channels" submenu page
     add_submenu_page(
-        'wpsd_dashboard', // The parent menu slug
+        null, // The parent menu slug
         __( 'All Channels', 'social-dock' ), // The page title
         __( 'All Channels', 'social-dock' ), // The menu title
         'manage_options', // The capability required to access this page

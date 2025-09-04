@@ -553,17 +553,23 @@ document.addEventListener("DOMContentLoaded", function () {
     widgetCards.forEach((card) => {
       card.addEventListener("click", () => {
         const channelType = card.dataset.channel;
+        // Always use the channelType (e.g., messenger, instagram) for the title input
+        const widgetName =
+          channelType.charAt(0).toUpperCase() + channelType.slice(1);
         const channelData = channelMap[channelType];
-
         if (channelData) {
           channelFormHeaderTitle.textContent = channelData.title;
           channelIconPreview.src = channelData.icon;
           logicalInputLabel.textContent = channelData.fieldLabel;
           logicalInput.placeholder = channelData.fieldPlaceholder;
-
+          // Set the channel type as the title input value
+          const channelTitleInput =
+            document.getElementById("wpsd-channel-title");
+          if (channelTitleInput) {
+            channelTitleInput.value = widgetName;
+          }
           messageInputGroup.style.display =
             channelType === "whatsapp" ? "block" : "none";
-
           if (modal) {
             modal.style.display = "none";
           }

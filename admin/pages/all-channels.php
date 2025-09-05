@@ -70,8 +70,11 @@ function wpsd_all_channels_page() {
         <div class="wpsd-channels-create-wrap">
                 <button class="wpsd-add-channel-btn">+ Add Channel</button>
                 <div style="margin-top:18px;font-size:1.2rem;color:#374151;">Create new channel from here.</div>
+                <div class="wpsd-channels-list-wrap"></div>
                 
         </div>
+        <!-- Missing container for channels list -->
+         
 
             <!-- Modal for adding a new channel -->
             <div id="wpsd-add-channel-modal" class="wpsd-modal" style="display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:rgba(0,0,0,0.18);z-index:9999;align-items:center;justify-content:center;">

@@ -481,9 +481,8 @@ document.addEventListener("DOMContentLoaded", function () {
       fieldLabel: "WhatsApp Number",
       fieldPlaceholder: "e.g. +1234567890",
     },
-  };
+  }; // Get all necessary elements for channel selection modal
 
-  // Get all necessary elements for channel selection modal
   const addChannelBtn = document.querySelector(".wpsd-add-channel-btn");
   const modal = document.getElementById("wpsd-add-channel-modal");
   const modalClose = document.getElementById("wpsd-modal-close");
@@ -492,6 +491,7 @@ document.addEventListener("DOMContentLoaded", function () {
   const backBtn = document.querySelector(".wpsd-nav-back");
 
   // Get all necessary elements for channel form modal
+
   const channelFormModal = document.getElementById("wpsd-channel-form-modal");
   const channelFormModalClose = document.querySelector(
     ".wpsd-channel-form-close-btn"
@@ -505,13 +505,182 @@ document.addEventListener("DOMContentLoaded", function () {
   const channelIconPreview = document.getElementById(
     "wpsd-channel-icon-preview"
   );
+
+  //----------------------------
   const logicalInputLabel = document.getElementById("wpsd-logical-input-label");
   const logicalInput = document.getElementById("wpsd-logical-input");
   const messageInputGroup = document.getElementById("wpsd-message-input-group");
   const imageUploadBtn = document.getElementById("wpsd-image-upload-btn");
   const imageUploadInput = document.getElementById("wpsd-image-upload-input");
-  const channelSaveBtn = document.querySelector(".wpsd-channel-save-btn");
+  const channelSaveBtn = document.querySelector(".wpsd-channel-save-btn"); // Global variable to store the selected channel type
 
+  //new code started
+  // Global variables
+  let selectedChannelType = null;
+  // const urlParams = new URLSearchParams(window.location.search);
+  // const widgetId = urlParams.get("widget_id");
+  // const channelListContainer = document.querySelector(
+  //   ".wpsd-channels-list-wrap"
+  // );
+
+  /**
+   * Fetches and renders channels for a specific widget ID.
+   * This function will replace the old mock logic to display a correct list.
+   */
+
+  // This assumes you have a <div class="wpsd-channels-list-wrap"></div> in your HTML
+  // and the static text "Create new channel from here." is already present above it.
+
+  const channelListContainer = document.querySelector(
+    ".wpsd-channels-list-wrap"
+  );
+  const urlParams = new URLSearchParams(window.location.search);
+  let widgetId = urlParams.get("widget_id");
+  widgetId = widgetId && !isNaN(widgetId) ? Number(widgetId) : null;
+
+  // Channel type map for icons/titles (should match your PHP/DB config)
+  // const channelMap = {
+  //   instagram: {
+  //     title: "Instagram",
+  //     icon: "https://cdn-icons-png.flaticon.com/512/2111/2111463.png",
+  //   },
+  //   messenger: {
+  //     title: "Messenger",
+  //     icon: "https://cdn-icons-png.flaticon.com/512/2111/2111624.png",
+  //   },
+  //   twitter: {
+  //     title: "Twitter",
+  //     icon: "https://cdn-icons-png.flaticon.com/512/733/733579.png",
+  //   },
+  //   youtube: {
+  //     title: "YouTube",
+  //     icon: "https://cdn-icons-png.flaticon.com/512/1384/1384060.png",
+  //   },
+  //   linkedin: {
+  //     title: "LinkedIn",
+  //     icon: "https://cdn-icons-png.flaticon.com/512/174/174857.png",
+  //   },
+  //   call: {
+  //     title: "Call",
+  //     icon: "https://cdn-icons-png.flaticon.com/512/597/597177.png",
+  //   },
+  //   pinterest: {
+  //     title: "Pinterest",
+  //     icon: "https://cdn-icons-png.flaticon.com/512/733/733646.png",
+  //   },
+  //   whatsapp: {
+  //     title: "WhatsApp",
+  //     icon: "https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg",
+  //   },
+  // };
+
+  // ... (your existing JavaScript code) ...
+
+  function renderChannels(widgetId) {
+    const channelListWrap = document.querySelector(".wpsd-channels-list-wrap");
+    const noChannelsMessage = document.querySelector(
+      '.wpsd-channels-create-wrap div[style*="Create new channel"]'
+    );
+
+    if (!channelListWrap) {
+      console.error("Channel list container not found.");
+      return;
+    }
+
+    // Clear existing channels and show loading state
+    channelListWrap.innerHTML = "<p>Loading channels...</p>";
+
+    // Show the "Create new channel" message by default
+    if (noChannelsMessage) {
+      noChannelsMessage.style.display = "block";
+    }
+
+    // Use URLSearchParams to build the form-data payload
+    const formData = new URLSearchParams();
+    formData.append("action", "wpsd_get_channels");
+    formData.append("security", wpsd_ajax.nonce);
+    formData.append("widget_id", widgetId ? widgetId : "");
+
+    fetch(wpsd_ajax.ajax_url, {
+      method: "POST",
+      body: formData,
+    })
+      .then((response) => {
+        // Check if the response is ok (status 200)
+        if (!response.ok) {
+          throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return response.json();
+      })
+      .then((response) => {
+        console.log("Channels response:", response);
+
+        if (response.success) {
+          const channels = response.data.channels;
+          console.log("Channels from database:", channels); // Added console.log for debugging
+          if (channels.length > 0) {
+            // Channels exist, hide the "Create new channel" message
+            if (noChannelsMessage) {
+              noChannelsMessage.style.display = "none";
+            }
+            channelListWrap.innerHTML = ""; // Clear loading message
+
+            channels.forEach((channel) => {
+              // Fallback icon and title if config is null
+              let icon = channelMap[channel.channel_name]?.icon || "";
+              let title =
+                channelMap[channel.channel_name]?.title || channel.channel_name;
+
+              const card = document.createElement("div");
+              card.className = "wpsd-channel-card";
+              card.style.cssText =
+                "display:flex;align-items:center;justify-content:space-between;padding:18px 24px;background:#fff;border-radius:12px;margin-bottom:16px;box-shadow:0 1px 4px rgba(0,0,0,0.04);font-size:1.1rem;";
+              card.innerHTML = `
+                <div style="display:flex;align-items:center;gap:16px;">
+                  <span style="font-size:1.5rem;cursor:grab;color:#9ca3af;">&#8942;</span>
+                  <img src="${icon}" alt="${title} Icon" style="width:32px;height:32px;border-radius:50%;background:#f3f4f6;">
+                  <span style="font-weight:500;color:#374151;">${title}</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:18px;">
+                  <button style="background:none;border:none;cursor:pointer;color:#374151;font-size:1rem;display:flex;align-items:center;gap:4px;"><span style="font-size:1.1rem;">&#9998;</span> Edit</button>
+                  <button style="background:none;border:none;cursor:pointer;color:#374151;font-size:1rem;display:flex;align-items:center;gap:4px;"><span style="font-size:1.1rem;">&#128203;</span> Duplicate</button>
+                  <button style="background:none;border:none;cursor:pointer;color:#ef4444;font-size:1rem;display:flex;align-items:center;gap:4px;"><span style="font-size:1.1rem;">&#128465;</span> Delete</button>
+                </div>
+              `;
+              channelListWrap.appendChild(card);
+            });
+          } else {
+            // No channels found, show the "Create new channel" message
+            if (noChannelsMessage) {
+              noChannelsMessage.style.display = "block";
+            }
+            channelListWrap.innerHTML = ""; // Clear loading message
+          }
+        } else {
+          // Backend returned an error
+          console.error("Error fetching channels:", response.data.message);
+          if (noChannelsMessage) {
+            noChannelsMessage.style.display = "block";
+          }
+          channelListWrap.innerHTML = ""; // Clear loading message
+        }
+      })
+      .catch((error) => {
+        // Network error or fetch() failure
+        console.error("AJAX Error:", error);
+        if (noChannelsMessage) {
+          noChannelsMessage.style.display = "block";
+        }
+        channelListWrap.innerHTML = ""; // Clear loading message
+      });
+  }
+
+  // Initial render: only call if widgetId is a valid positive number
+  if (widgetId && widgetId > 0) {
+    renderChannels(widgetId);
+  }
+
+  // --- Event listeners for channels ---
   // Modal open for adding a new channel
   if (addChannelBtn && modal) {
     addChannelBtn.addEventListener("click", () => {
@@ -549,27 +718,29 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 
   // Show the channel form modal when a widget is clicked
+
   if (widgetCards.length > 0) {
     widgetCards.forEach((card) => {
       card.addEventListener("click", () => {
-        const channelType = card.dataset.channel;
-        // Always use the channelType (e.g., messenger, instagram) for the title input
+        // Store the selected channel type in our global variable
+        selectedChannelType = card.dataset.channel;
         const widgetName =
-          channelType.charAt(0).toUpperCase() + channelType.slice(1);
-        const channelData = channelMap[channelType];
+          selectedChannelType.charAt(0).toUpperCase() +
+          selectedChannelType.slice(1);
+        const channelData = channelMap[selectedChannelType];
+
         if (channelData) {
           channelFormHeaderTitle.textContent = channelData.title;
           channelIconPreview.src = channelData.icon;
           logicalInputLabel.textContent = channelData.fieldLabel;
           logicalInput.placeholder = channelData.fieldPlaceholder;
-          // Set the channel type as the title input value
           const channelTitleInput =
             document.getElementById("wpsd-channel-title");
           if (channelTitleInput) {
             channelTitleInput.value = widgetName;
           }
           messageInputGroup.style.display =
-            channelType === "whatsapp" ? "block" : "none";
+            selectedChannelType === "whatsapp" ? "block" : "none";
           if (modal) {
             modal.style.display = "none";
           }
@@ -618,24 +789,207 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Handle Save button click (placeholder for future CRUD)
+  // Handle Save button click
+
+  // Handle Save button click
   if (channelSaveBtn) {
-    channelSaveBtn.addEventListener("click", () => {
-      console.log("Save button clicked. Preparing to send data via AJAX.");
-      const channelData = {
-        title: document.getElementById("wpsd-channel-title").value,
-        icon: document.getElementById("wpsd-channel-icon-preview").src,
-        logical_input: document.getElementById("wpsd-logical-input").value,
-        message: document.getElementById("wpsd-message-input").value,
-        target: document.getElementById("wpsd-target-select").value,
-        hide_after_office_hours: document.getElementById(
-          "wpsd-office-hours-toggle"
-        ).checked,
-        show_on_desktop: document.getElementById("wpsd-show-desktop").checked,
-        show_on_mobile: document.getElementById("wpsd-show-mobile").checked,
-      };
-      console.log("Collected data:", channelData);
-      // Future step: send this data to a wpsd-crud.php file via AJAX
+    channelSaveBtn.addEventListener("click", async () => {
+      // Add loading state to the button
+      const originalButtonHtml = channelSaveBtn.innerHTML;
+      channelSaveBtn.disabled = true;
+      channelSaveBtn.innerHTML = `
+        <svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        Saving...
+      `;
+
+      try {
+        if (!selectedChannelType || !widgetId) {
+          console.error("Missing channel type or widget ID.");
+          return;
+        }
+
+        // Create the channel_show_on array based on checkboxes
+        const channelShowOn = [];
+        if (document.getElementById("wpsd-show-desktop").checked) {
+          channelShowOn.push("desktop");
+        }
+        if (document.getElementById("wpsd-show-mobile").checked) {
+          channelShowOn.push("mobile");
+        }
+
+        const channelData = {
+          channel_show_on: channelShowOn,
+          f_fields: {
+            logical_input: document.getElementById("wpsd-logical-input").value,
+            message: document.getElementById("wpsd-message-input").value,
+          },
+          title: document.getElementById("wpsd-channel-title").value,
+          icon: document.getElementById("wpsd-channel-icon-preview").src,
+          target: document.getElementById("wpsd-target-select").value,
+          hide_after_office_hours: document.getElementById(
+            "wpsd-office-hours-toggle"
+          ).checked,
+        };
+
+        const channelFormData = new FormData();
+        channelFormData.append("action", "wpsd_save_channel");
+        channelFormData.append("widget_id", widgetId); // Use the URL widget ID
+        channelFormData.append("channel_name", selectedChannelType);
+        channelFormData.append("config", JSON.stringify(channelData));
+        channelFormData.append("security", wpsd_ajax.nonce);
+
+        const channelResponse = await fetch(wpsd_ajax.ajax_url, {
+          method: "POST",
+          body: channelFormData,
+        });
+
+        const channelResult = await channelResponse.json();
+        console.log("Channel save response:", channelResult);
+
+        if (channelResult.success) {
+          console.log("Channel saved successfully!");
+          if (channelFormModal) {
+            channelFormModal.style.display = "none";
+            // Re-render the channel list after a successful save
+            renderChannels();
+          }
+        } else {
+          console.error("Failed to save channel:", channelResult.data.message);
+        }
+      } catch (error) {
+        console.error("AJAX Error:", error);
+      } finally {
+        channelSaveBtn.disabled = false;
+        channelSaveBtn.innerHTML = originalButtonHtml;
+      }
     });
   }
+
+  // Initial load: Render channels if a widget_id exists in the URL
+  if (widgetId) {
+    renderChannels();
+  }
 });
+
+// channelSaveBtn.addEventListener("click", async () => {
+//   const loader = channelSaveBtn.querySelector(".wpsd-loader");
+//   const saveText = channelSaveBtn.querySelector(".wpsd-save-text");
+//   loader.style.display = "inline-block";
+//   saveText.textContent = "Saving...";
+
+//   console.log("Save button clicked. Starting two-step save process.");
+
+//   if (!selectedChannelType) {
+//     console.error("No channel type selected. Please select a channel.");
+//     return;
+//   }
+
+// Add loading state to the button
+// const originalButtonHtml = channelSaveBtn.innerHTML;
+// channelSaveBtn.disabled = true;
+// channelSaveBtn.innerHTML = `
+//       <svg class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+//           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+//           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 1 1-7 7V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+//       </svg>
+//       Saving...
+//   `;
+
+//       try {
+//         // 🔹 Step 1: Create the widget
+//         const widgetFormData = new FormData();
+//         widgetFormData.append("action", "wpsd_create_widget");
+//         widgetFormData.append("user_name", "Admin"); // Or a dynamic user name
+//         widgetFormData.append(
+//           "widget_name",
+//           document.getElementById("wpsd-channel-title").value
+//         );
+//         widgetFormData.append("style", "default_style"); // Or a dynamic style
+//         widgetFormData.append("security", wpsd_ajax.nonce);
+
+//         const widgetResponse = await fetch(wpsd_ajax.ajax_url, {
+//           method: "POST",
+//           body: widgetFormData,
+//         });
+
+//         const widgetResult = await widgetResponse.json();
+//         console.log("Widget creation response:", widgetResult);
+
+//         if (!widgetResult.success) {
+//           console.error("Failed to create widget:", widgetResult.data.message);
+//           return;
+//         }
+
+//         const newWidgetId = widgetResult.data.id;
+//         console.log("Widget created successfully with ID:", newWidgetId); // 🔹 Step 2: Save the channel with the new widget ID // Create the channel_show_on array based on checkboxes
+
+//         const channelShowOn = [];
+//         if (document.getElementById("wpsd-show-desktop").checked) {
+//           channelShowOn.push("desktop");
+//         }
+//         if (document.getElementById("wpsd-show-mobile").checked) {
+//           channelShowOn.push("mobile");
+//         }
+
+//         const channelData = {
+//           // A new field to specify where the channel should be shown
+//           channel_show_on: channelShowOn,
+//           // I edited the code: Removed the hardcoded 'sequence' key. The PHP will now handle it.
+//           // F_fields to hold the primary input for the channel
+//           f_fields: {
+//             logical_input: document.getElementById("wpsd-logical-input").value,
+//             message: document.getElementById("wpsd-message-input").value,
+//           },
+//           title: document.getElementById("wpsd-channel-title")
+//             ? document.getElementById("wpsd-channel-title").value
+//             : channelMap[selectedChannelType].title,
+//           icon: document.getElementById("wpsd-channel-icon-preview").src,
+//           target: document.getElementById("wpsd-target-select").value,
+//           hide_after_office_hours: document.getElementById(
+//             "wpsd-office-hours-toggle"
+//           ).checked,
+//           // Remove the individual booleans since they are now in the channel_show_on array
+//         };
+
+//         const channelFormData = new FormData();
+//         channelFormData.append("action", "wpsd_save_channel");
+//         channelFormData.append("widget_id", newWidgetId);
+//         channelFormData.append("channel_name", selectedChannelType);
+//         channelFormData.append("config", JSON.stringify(channelData));
+//         channelFormData.append("security", wpsd_ajax.nonce);
+
+//         const channelResponse = await fetch(wpsd_ajax.ajax_url, {
+//           method: "POST",
+//           body: channelFormData,
+//         });
+
+//         const channelResult = await channelResponse.json();
+//         console.log("Channel save response:", channelResult);
+
+//         if (channelResult.success) {
+//           console.log("Channel saved successfully!");
+//           if (channelFormModal) {
+//             channelFormModal.style.display = "none";
+//             // I edited the code: Replaced the browser reload with a message to the console.
+//             console.log(
+//               "Channel successfully created. The channel list needs to be updated."
+//             );
+//           }
+//         } else {
+//           console.error("Failed to save channel:", channelResult.data.message);
+//         }
+//       } catch (error) {
+//         console.error("AJAX Error:", error);
+//       } finally {
+//         // I edited the code: Restored the button state regardless of success or failure.
+//         channelSaveBtn.disabled = false;
+//         channelSaveBtn.innerHTML = originalButtonHtml;
+//         loader.style.display = "none";
+//         saveText.textContent = "Save";
+//       }
+//     });
+//   }
+// });

@@ -271,3 +271,150 @@ function wpsd_duplicate_widget_callback() {
     wp_send_json_success(['message' => 'Widget duplicated', 'new_id' => $new_id]);
 }
 add_action('wp_ajax_wpsd_duplicate_widget', 'wpsd_duplicate_widget_callback');
+
+/**
+ * Inserts or updates a channel in the database.
+ * The channel_id is always the same as the widget_id.
+ *
+ * @param array $data The channel data to insert/update.
+ * @return int|bool The ID of the affected row or false on failure.
+ */
+function wpsd_insert_or_update_channel($data) {
+    global $wpdb;
+    $table = $wpdb->prefix . 'wpsd_channels_db';
+
+    $widget_id = $data['widget_id'];
+
+    // Check if a channel with this widget_id already exists
+    $channel_exists = $wpdb->get_var($wpdb->prepare(
+        "SELECT COUNT(*) FROM $table WHERE widget_id = %d AND channel_name = %s",
+        $widget_id,
+        $data['channel_name']
+    ));
+
+    if ($channel_exists) {
+        // Update the existing channel for this widget and channel name
+        $updated = $wpdb->update(
+            $table,
+            [
+                'config'       => $data['config'],
+                'updated_at'   => current_time('mysql'),
+            ],
+            [
+                'widget_id'    => $widget_id,
+                'channel_name' => $data['channel_name']
+            ],
+            [ '%s', '%s' ],
+            [ '%d', '%s' ]
+        );
+        return $updated !== false ? $widget_id : false;
+    } else {
+        // Insert a new channel
+        $inserted = $wpdb->insert(
+            $table,
+            [
+                'widget_id'     => $widget_id,
+                'channel_name'  => $data['channel_name'],
+                'config'        => $data['config'],
+                'sequence'      => $data['sequence'],
+                'status'        => 1
+            ],
+            [
+                '%d', // widget_id
+                '%s', // channel_name
+                '%s', // config
+                '%d', // sequence
+                '%d'  // status
+            ]
+        );
+        return $inserted !== false ? $widget_id : false;
+    }
+}
+
+
+/**
+ * Handle AJAX request to insert or update a new channel.
+ */
+add_action('wp_ajax_wpsd_save_channel', 'wpsd_save_channel_callback');
+
+function wpsd_save_channel_callback() {
+    global $wpdb;
+
+    error_log('--- [wpsd_save_channel_callback STARTED] ---');
+
+    // Security check
+    check_ajax_referer('wpsd_nonce', 'security');
+
+    // Validate and sanitize data
+    $widget_id = isset($_POST['widget_id']) ? intval($_POST['widget_id']) : 0;
+    $channel_name = isset($_POST['channel_name']) ? sanitize_text_field($_POST['channel_name']) : '';
+    $config_json = isset($_POST['config']) ? sanitize_text_field($_POST['config']) : '{}';
+
+    if ($widget_id <= 0 || empty($channel_name)) {
+        wp_send_json_error(['message' => 'Invalid widget ID or channel name.']);
+        wp_die();
+    }
+
+    $channels_table = $wpdb->prefix . 'wpsd_channels_db';
+    $max_sequence = $wpdb->get_var($wpdb->prepare(
+    "SELECT MAX(sequence) FROM $channels_table WHERE widget_id = %d",
+    $widget_id
+));
+$new_sequence = ($max_sequence !== null && $max_sequence !== false) ? intval($max_sequence) + 1 : 1;
+
+    $data = [
+    'widget_id'    => $widget_id,
+    'channel_name' => $channel_name,
+    'config'       => $config_json,
+    'sequence'     => $new_sequence,
+    ];
+
+    $result = wpsd_insert_or_update_channel($data);
+
+    if ($result) {
+        wp_send_json_success(['message' => 'Channel saved successfully!', 'channel_id' => $result]);
+    } else {
+        wp_send_json_error(['message' => 'Failed to save channel.']);
+    }
+
+    wp_die();
+}
+
+/**
+ * Get all channels for a specific widget.
+ */
+add_action('wp_ajax_wpsd_get_channels', 'wpsd_get_channels_callback');
+
+function wpsd_get_channels_callback() {
+    global $wpdb;
+
+    // Security check
+    check_ajax_referer('wpsd_nonce', 'security');
+
+    $widget_id = isset($_POST['widget_id']) ? intval($_POST['widget_id']) : 0;
+
+    if ($widget_id <= 0) {
+        wp_send_json_error(['message' => 'Invalid widget ID.']);
+    }
+
+    $table = $wpdb->prefix . 'wpsd_channels_db';
+    $channels = $wpdb->get_results(
+        $wpdb->prepare(
+            "SELECT id, channel_name, config FROM $table WHERE widget_id = %d ORDER BY sequence ASC",
+            $widget_id
+        ),
+        ARRAY_A
+    );
+
+    if (!empty($channels)) {
+        // Since config is stored as a JSON string, decode it for the frontend
+        foreach ($channels as &$channel) {
+            $channel['config'] = json_decode($channel['config'], true);
+        }
+        wp_send_json_success(['channels' => $channels]);
+    } else {
+        wp_send_json_error(['message' => 'No channels found for this widget.']);
+    }
+
+    wp_die();
+}

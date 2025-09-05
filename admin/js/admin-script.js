@@ -536,7 +536,7 @@ document.addEventListener("DOMContentLoaded", function () {
   );
   const urlParams = new URLSearchParams(window.location.search);
   let widgetId = urlParams.get("widget_id");
-  widgetId = widgetId && !isNaN(widgetId) ? Number(widgetId) : null;
+  widgetId = widgetId && !isNaN(widgetId) ? parseInt(widgetId, 10) : null;
 
   // Channel type map for icons/titles (should match your PHP/DB config)
   // const channelMap = {
@@ -599,7 +599,7 @@ document.addEventListener("DOMContentLoaded", function () {
     const formData = new URLSearchParams();
     formData.append("action", "wpsd_get_channels");
     formData.append("security", wpsd_ajax.nonce);
-    formData.append("widget_id", widgetId ? widgetId : "");
+    formData.append("widget_id", widgetId !== null ? widgetId : "");
 
     fetch(wpsd_ajax.ajax_url, {
       method: "POST",
@@ -806,8 +806,13 @@ document.addEventListener("DOMContentLoaded", function () {
       `;
 
       try {
-        if (!selectedChannelType || !widgetId) {
-          console.error("Missing channel type or widget ID.");
+        if (
+          !selectedChannelType ||
+          !widgetId ||
+          isNaN(widgetId) ||
+          widgetId <= 0
+        ) {
+          console.error("Missing or invalid channel type or widget ID.");
           return;
         }
 
@@ -854,7 +859,7 @@ document.addEventListener("DOMContentLoaded", function () {
           if (channelFormModal) {
             channelFormModal.style.display = "none";
             // Re-render the channel list after a successful save
-            renderChannels();
+            renderChannels(widgetId);
           }
         } else {
           console.error("Failed to save channel:", channelResult.data.message);
@@ -868,10 +873,8 @@ document.addEventListener("DOMContentLoaded", function () {
     });
   }
 
-  // Initial load: Render channels if a widget_id exists in the URL
-  if (widgetId) {
-    renderChannels();
-  }
+  // Remove duplicate/unconditional call to renderChannels() with no argument
+  // (Already handled above with correct widgetId check)
 });
 
 // channelSaveBtn.addEventListener("click", async () => {

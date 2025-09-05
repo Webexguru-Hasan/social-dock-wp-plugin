@@ -383,19 +383,39 @@ $new_sequence = ($max_sequence !== null && $max_sequence !== false) ? intval($ma
 /**
  * Get all channels for a specific widget.
  */
+// add_action('wp_ajax_wpsd_get_channels', 'wpsd_get_channels_callback');
+
 add_action('wp_ajax_wpsd_get_channels', 'wpsd_get_channels_callback');
+add_action('wp_ajax_nopriv_wpsd_get_channels', 'wpsd_get_channels_callback'); // For logged-out users, if needed
 
 function wpsd_get_channels_callback() {
     global $wpdb;
 
+    error_log('Received POST data: ' . print_r($_POST, true));
+
     // Security check
     check_ajax_referer('wpsd_nonce', 'security');
 
-    $widget_id = isset($_POST['widget_id']) ? intval($_POST['widget_id']) : 0;
+     if (!isset($_POST['widget_id']) || empty($_POST['widget_id'])) {
+        wp_send_json_error(array('message' => 'Invalid widget ID.'));
+        return;
+    }
+
+    $widget_id = intval($_POST['widget_id']);
+
+    // Log the processed widget ID
+    error_log('Processed widget ID: ' . $widget_id);
 
     if ($widget_id <= 0) {
-        wp_send_json_error(['message' => 'Invalid widget ID.']);
+        wp_send_json_error(array('message' => 'Invalid widget ID.'));
+        return;
     }
+
+    // $widget_id = isset($_POST['widget_id']) ? intval($_POST['widget_id']) : 0;
+
+    // if ($widget_id <= 0) {
+    //     wp_send_json_error(['message' => 'Invalid widget ID.']);
+    // }
 
     $table = $wpdb->prefix . 'wpsd_channels_db';
     $channels = $wpdb->get_results(
